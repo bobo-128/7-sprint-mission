@@ -4,7 +4,9 @@ import { updateComment, deleteComment } from '../controllers/commentsController.
 
 const commentsRouter = express.Router();
 
-commentsRouter.patch('/:id', withAsync(updateComment));
-commentsRouter.delete('/:id', withAsync(deleteComment));
+commentsRouter
+    .route('/:id')
+    .patch(withAsync(updateComment))
+    .delete(withAsync(deleteComment));
 
 export default commentsRouter;

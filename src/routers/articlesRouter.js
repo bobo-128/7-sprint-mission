@@ -8,16 +8,28 @@ import {
   deleteArticle,
   createComment,
   getCommentList,
+  likeArticle,
 } from '../controllers/articlesController.js';
+import { authMiddleware, optionalAuth } from '../middlewares/authMiddleware.js';
+
 
 const articlesRouter = express.Router();
 
-articlesRouter.post('/', withAsync(createArticle));
-articlesRouter.get('/', withAsync(getArticleList));
-articlesRouter.get('/:id', withAsync(getArticle));
-articlesRouter.patch('/:id', withAsync(updateArticle));
-articlesRouter.delete('/:id', withAsync(deleteArticle));
-articlesRouter.post('/:id/comments', withAsync(createComment));
-articlesRouter.get('/:id/comments', withAsync(getCommentList));
+articlesRouter
+  .route('/')
+  .post(authMiddleware, withAsync(createArticle))
+  .get(withAsync(getArticleList));
 
+articlesRouter
+  .route('/:id')
+  .get(optionalAuth, withAsync(getArticle))
+  .patch(withAsync(updateArticle))
+  .delete(withAsync(deleteArticle));
+
+articlesRouter
+  .route('/:id/comments')
+  .post(authMiddleware, withAsync(createComment))
+  .get(withAsync(getCommentList));
+
+articlesRouter.post('/:id/like', authMiddleware, withAsync(likeArticle));
 export default articlesRouter;

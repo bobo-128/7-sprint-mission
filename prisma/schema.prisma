@@ -14,13 +14,14 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  nickname  String   @unique
-  image     String
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  nickname     String   @unique
+  image        String?
+  password     String
+  refreshToken String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   products Product[]
   articles Article[]
@@ -44,15 +45,15 @@ model Article {
 }
 
 model Product {
-  id          Int        @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
   description String
   price       Int
   tags        String[]
   images      String[]
   userId      Int
-  createdAt   DasrceTime @default(now())
-  updatedAet  DateTime   @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   user           User       @relation(fields: [userId], references: [id])
   ProductComment Comment[]
@@ -80,7 +81,7 @@ model Favorite {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User     @relation(fields: [userId], references: [id])
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
@@ -91,6 +92,6 @@ model Like {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User     @relation(fields: [userId], references: [id])
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   article Article? @relation(fields: [articleId], references: [id], onDelete: Cascade)
 }

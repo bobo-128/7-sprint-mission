@@ -8,36 +8,56 @@ import {
   GetArticleListParamsStruct,
 } from '../structs/articlesStructs.js';
 import { CreateCommentBodyStruct, GetCommentListParamsStruct } from '../structs/commentsStruct.js';
+import ForbiddenError from '../lib/errors/ForbiddenError.js';
 
 export async function createArticle(req, res) {
   const data = create(req.body, CreateArticleBodyStruct);
 
-  const article = await prismaClient.article.create({ data });
+  const article = await prismaClient.article.create({
+    data: {
+      ...data,
+      userId: req.user.id
+    }
+  });
 
   return res.status(201).send(article);
 }
 
 export async function getArticle(req, res) {
   const { id } = create(req.params, IdParamsStruct);
+  const userId = req.user?.id;//로그인 여부 확인
 
   const article = await prismaClient.article.findUnique({ where: { id } });
   if (!article) {
     throw new NotFoundError('article', id);
   }
-
-  return res.send(article);
+  let isLiked = false;
+  if (userId) {
+    const like = await prismaClient.like.findFirst({
+      where: { userId: userId, articleId: id },
+    });
+    isLiked = !!like;
+  }
+  return res.status(200).json({ ...article, isLiked });
 }
 
 export async function updateArticle(req, res) {
   const { id } = create(req.params, IdParamsStruct);
   const data = create(req.body, UpdateArticleBodyStruct);
 
-  const article = await prismaClient.article.update({ where: { id }, data });
-  if (!article) {
-    throw new NotFoundError('article', articleId);
-  }
+  const existingArticle = await prismaClient.article.findUnique({ where: { id } });
 
-  return res.send(article);
+  if (!existingArticle) {
+    throw new NotFoundError('article', id);
+  }
+  if (existingArticle.userId !== req.user.id) {
+    throw new ForbiddenError('게시글 수정 권한이 없습니다.');
+  }
+  const updatedArticle = await prismaClient.article.update({
+    where: { id },
+    data
+  });
+  return res.status(200).json(updatedArticle);
 }
 
 export async function deleteArticle(req, res) {
@@ -47,7 +67,9 @@ export async function deleteArticle(req, res) {
   if (!existingArticle) {
     throw new NotFoundError('article', id);
   }
-
+  if (existingArticle.userId !== req.user.id) {
+    throw new ForbiddenError('게시글 삭제 권한이 없습니다.');
+  }
   await prismaClient.article.delete({ where: { id } });
 
   return res.status(204).send();
@@ -55,7 +77,7 @@ export async function deleteArticle(req, res) {
 
 export async function getArticleList(req, res) {
   const { page, pageSize, orderBy, keyword } = create(req.query, GetArticleListParamsStruct);
-
+  const userId = req.user?.id;
   const where = {
     title: keyword ? { contains: keyword } : undefined,
   };
@@ -66,10 +88,21 @@ export async function getArticleList(req, res) {
     take: pageSize,
     orderBy: orderBy === 'recent' ? { createdAt: 'desc' } : { id: 'asc' },
     where,
+    include: {
+      likes: userId ? {
+        where: { userId }
+      } : false
+    }
   });
-
+  const listWithLiked = articles.map((article) => {
+    const { likes = [], ...rest } = article;
+    return {
+      ...rest,
+      isLiked: likes.length > 0
+    };
+  });
   return res.send({
-    list: articles,
+    list: listWithLiked,
     totalCount,
   });
 }
@@ -87,6 +120,7 @@ export async function createComment(req, res) {
     data: {
       articleId,
       content,
+      userId: req.user.id,
     },
   });
 
@@ -116,4 +150,27 @@ export async function getCommentList(req, res) {
     list: comments,
     nextCursor,
   });
+}
+
+
+//게시글 좋아요, 좋아요취소 
+export async function likeArticle(req, res) {
+  const articleId = Number(req.params.id);
+  const userId = req.user.id
+
+  const existingLike = await prismaClient.like.findFirst({
+    where: { userId, articleId },
+  });
+
+  if (existingLike) {
+    await prismaClient.like.delete({
+      where: { id: existingLike.id },
+    });
+    return res.status(200).json({ isLiked: false });
+  } else {
+    await prismaClient.like.create({
+      data: { userId, articleId },
+    });
+    return res.status(201).json({ isLiked: true });
+  }
 }
