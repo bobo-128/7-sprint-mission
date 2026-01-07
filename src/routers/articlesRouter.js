@@ -23,8 +23,8 @@ articlesRouter
 articlesRouter
   .route('/:id')
   .get(optionalAuth, withAsync(getArticle))
-  .patch(withAsync(updateArticle))
-  .delete(withAsync(deleteArticle));
+  .patch(authMiddleware, withAsync(updateArticle))
+  .delete(authMiddleware, withAsync(deleteArticle));
 
 articlesRouter
   .route('/:id/comments')

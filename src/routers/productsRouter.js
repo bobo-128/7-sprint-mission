@@ -23,8 +23,8 @@ productsRouter
 productsRouter
   .route('/:id')
   .get(optionalAuth, withAsync(getProduct))
-  .patch(withAsync(updateProduct))
-  .delete(withAsync(deleteProduct));
+  .patch(authMiddleware, withAsync(updateProduct))
+  .delete(authMiddleware, withAsync(deleteProduct));
 
 productsRouter
   .route('/:id/comments')
